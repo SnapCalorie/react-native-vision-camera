@@ -8,10 +8,12 @@ import type { CameraProps, CameraRuntimeError, PhotoFile, VideoFile } from 'reac
 import {
   runAtTargetFps,
   useCameraDevice,
+  useCameraDevices,
   useCameraFormat,
   useFrameProcessor,
   useLocationPermission,
   useMicrophonePermission,
+  useSkiaFrameProcessor,
 } from 'react-native-vision-camera'
 import { Camera } from 'react-native-vision-camera'
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, MAX_ZOOM_FACTOR, SAFE_AREA_PADDING, SCREEN_HEIGHT, SCREEN_WIDTH } from './Constants'
@@ -26,9 +28,9 @@ import IonIcon from 'react-native-vector-icons/Ionicons'
 import type { Routes } from './Routes'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useIsFocused } from '@react-navigation/core'
-import { usePreferredCameraDevice } from './hooks/usePreferredCameraDevice'
 import { examplePlugin } from './frame-processors/ExamplePlugin'
 import { exampleKotlinSwiftPlugin } from './frame-processors/ExampleKotlinSwiftPlugin'
+import { usePreferredCameraDevice } from './hooks/usePreferredCameraDevice'
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera)
 Reanimated.addWhitelistedNativeProps({
@@ -60,6 +62,9 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
   const [preferredDevice] = usePreferredCameraDevice()
   let device = useCameraDevice(cameraPosition)
 
+  // const devices = useCameraDevices()
+  // const device = devices.find((d) => d.supportsDepthData && d.position === 'back' && d.isMultiCam && d.name === 'Back LiDAR Depth Camera')
+
   if (preferredDevice != null && preferredDevice.position === cameraPosition) {
     // override default device with the one selected by the user in settings
     device = preferredDevice
@@ -69,6 +74,7 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
 
   const screenAspectRatio = SCREEN_HEIGHT / SCREEN_WIDTH
   const format = useCameraFormat(device, [
+    { depth: true },
     { fps: targetFps },
     { videoAspectRatio: screenAspectRatio },
     { videoResolution: 'max' },
@@ -112,9 +118,12 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
   const onMediaCaptured = useCallback(
     (media: PhotoFile | VideoFile, type: 'photo' | 'video') => {
       console.log(`Media captured! ${JSON.stringify(media)}`)
+      // Pass depthPath and depthDims if available (for photos)
       navigation.navigate('MediaPage', {
         path: media.path,
         type: type,
+        ...(type === 'photo' && 'depthPath' in media && media.depthPath !== undefined ? { depthPath: media.depthPath } : {}),
+        ...(type === 'photo' && 'depthDims' in media && media.depthDims !== undefined ? { depthDims: media.depthDims } : {}),
       })
     },
     [navigation],
@@ -178,19 +187,48 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
     location.requestPermission()
   }, [location])
 
-  const frameProcessor = useFrameProcessor((frame) => {
-    'worklet'
-
-    runAtTargetFps(10, () => {
+  const frameProcessor = useFrameProcessor(
+    (frame) => {
       'worklet'
-      console.log(`${frame.timestamp}: ${frame.width}x${frame.height} ${frame.pixelFormat} Frame (${frame.orientation})`)
-      examplePlugin(frame)
-      exampleKotlinSwiftPlugin(frame)
-    })
-  }, [])
+
+      // frame.render()
+
+      runAtTargetFps(1, () => {
+        'worklet'
+        console.log(`${frame.timestamp}: ${frame.width}x${frame.height} ${frame.pixelFormat} Frame (${frame.orientation})`)
+        examplePlugin(frame)
+        exampleKotlinSwiftPlugin(frame)
+
+        try {
+          if (format !== undefined && format.supportsDepthCapture && device !== undefined && device.supportsDepthData) {
+            const depthArray = frame.depthToArrayBuffer()
+
+            if (depthArray !== undefined) {
+              console.log('Depth data bytes:', depthArray.byteLength)
+
+              // Using the length and width of the depth data, we can create a 2D array of floats
+              const depthData = new Float32Array(depthArray)
+
+              console.log(`Length in floats: ${depthData.length}`)
+            } else {
+              console.log('No depth data available')
+            }
+          } else {
+            console.log('No depth data available')
+          }
+        } finally {
+          console.log('Depth data processing finished')
+        }
+      })
+    },
+    [device, format],
+  )
 
   const videoHdr = format?.supportsVideoHdr && enableHdr
   const photoHdr = format?.supportsPhotoHdr && enableHdr && !videoHdr
+
+  // Depth data enabled indicator
+  const isDepthEnabled = !!(device?.supportsDepthData && format?.supportsDepthCapture)
 
   return (
     <View style={styles.container}>
@@ -227,6 +265,7 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
                 video={true}
                 audio={microphone.hasPermission}
                 enableLocation={location.hasPermission}
+                enableDepthData={device.supportsDepthData}
                 frameProcessor={frameProcessor}
               />
             </TapGestureHandler>
@@ -283,6 +322,10 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
           <IonIcon name="qr-code-outline" color="white" size={24} />
         </PressableOpacity>
       </View>
+
+      <View style={[styles.depthIndicator, { backgroundColor: isDepthEnabled ? '#1ec773' : '#444' }]}>
+        <Text style={styles.depthIndicatorText}>{`Depth: ${isDepthEnabled ? 'ON' : 'OFF'}`}</Text>
+      </View>
     </View>
   )
 }
@@ -321,5 +364,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  depthIndicator: {
+    position: 'absolute',
+    top: SAFE_AREA_PADDING.paddingTop,
+    right: SAFE_AREA_PADDING.paddingRight + CONTROL_BUTTON_SIZE + 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+    alignSelf: 'flex-end',
+  },
+  depthIndicatorText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
 })

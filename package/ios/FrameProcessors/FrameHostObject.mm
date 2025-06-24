@@ -156,6 +156,44 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
     };
     return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "toArrayBuffer"), 0, toArrayBuffer);
   }
+  
+  // Updated depthToArrayBuffer method with caching to prevent memory exhaustion
+  if (name == "depthToArrayBuffer") {
+    auto depthToArrayBuffer = JSI_FUNC {
+      if (_frame.depth == nil) {
+        return jsi::Value::undefined();
+      }
+      CVPixelBufferRef depthBuffer = _frame.depth.depthDataMap;
+      auto bytesPerRow = CVPixelBufferGetBytesPerRow(depthBuffer);
+      auto height = CVPixelBufferGetHeight(depthBuffer);
+      auto arraySize = bytesPerRow * height;
+      
+      static constexpr auto DEPTH_ARRAYBUFFER_CACHE_PROP_NAME = "__depthArrayBufferCache";
+      if (!runtime.global().hasProperty(runtime, DEPTH_ARRAYBUFFER_CACHE_PROP_NAME)) {
+        auto mutableBuffer = std::make_shared<vision::MutableRawBuffer>(arraySize);
+        jsi::ArrayBuffer arrayBuffer(runtime, mutableBuffer);
+        runtime.global().setProperty(runtime, DEPTH_ARRAYBUFFER_CACHE_PROP_NAME, std::move(arrayBuffer));
+      }
+      
+      auto arrayBufferCache = runtime.global().getPropertyAsObject(runtime, DEPTH_ARRAYBUFFER_CACHE_PROP_NAME);
+      auto arrayBuffer = arrayBufferCache.getArrayBuffer(runtime);
+      
+      if (arrayBuffer.size(runtime) != arraySize) {
+        auto mutableBuffer = std::make_shared<vision::MutableRawBuffer>(arraySize);
+        arrayBuffer = jsi::ArrayBuffer(runtime, mutableBuffer);
+        runtime.global().setProperty(runtime, DEPTH_ARRAYBUFFER_CACHE_PROP_NAME, arrayBuffer);
+      }
+      
+      CVPixelBufferLockBaseAddress(depthBuffer, kCVPixelBufferLock_ReadOnly);
+      auto baseAddress = CVPixelBufferGetBaseAddress(depthBuffer);
+      memcpy(arrayBuffer.data(runtime), baseAddress, arraySize);
+      CVPixelBufferUnlockBaseAddress(depthBuffer, kCVPixelBufferLock_ReadOnly);
+      
+      return arrayBuffer;
+    };
+    return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "depthToArrayBuffer"), 0, depthToArrayBuffer);
+  }
+
   if (name == "toString") {
     auto toString = JSI_FUNC {
       // Print debug description (width, height)
