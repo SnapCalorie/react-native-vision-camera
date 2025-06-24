@@ -2,12 +2,12 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import React, { useCallback, useMemo } from 'react'
 import IonIcon from 'react-native-vector-icons/Ionicons'
 import type { ListRenderItemInfo, SectionListData } from 'react-native'
-import { StyleSheet, View, Text, SectionList } from 'react-native'
+import { StyleSheet, View, Text, SectionList, TouchableOpacity } from 'react-native'
 import type { CameraDevice } from 'react-native-vision-camera'
 import { useCameraDevices } from 'react-native-vision-camera'
 import { CONTENT_SPACING, SAFE_AREA_PADDING } from './Constants'
 import type { Routes } from './Routes'
-import { PressableOpacity } from 'react-native-pressable-opacity'
+
 import { usePreferredCameraDevice } from './hooks/usePreferredCameraDevice'
 
 const keyExtractor = (item: CameraDevice): string => item.id
@@ -42,7 +42,7 @@ function Device({ device, onPress }: DeviceProps): React.ReactElement {
   const deviceTypes = useMemo(() => device.physicalDevices.map((t) => t.replace('-camera', '')).join(' + '), [device.physicalDevices])
 
   return (
-    <PressableOpacity style={styles.itemContainer} onPress={onPress}>
+    <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
       <View style={styles.horizontal}>
         <IonIcon name="camera" size={18} color="black" />
         <Text style={styles.deviceName} numberOfLines={3}>
@@ -62,10 +62,19 @@ function Device({ device, onPress }: DeviceProps): React.ReactElement {
           {maxVideoRes.videoWidth}x{maxVideoRes.videoHeight} @ {maxVideoRes.maxFps} FPS
         </Text>
       </View>
+      <View style={styles.horizontal}>
+        <IonIcon name="barcode" size={12} color="black" />
+        <Text style={styles.resolutionText}>{device.formats.length} formats</Text>
+      </View>
+      {/* Depth */}
+      <View style={styles.horizontal}>
+        <IonIcon name="cube" size={12} color="black" />
+        <Text style={styles.resolutionText}>{device.supportsDepthData ? 'Supports Depth' : 'No Depth'}</Text>
+      </View>
       <Text style={styles.deviceId} numberOfLines={2} ellipsizeMode="middle">
         {device.id}
       </Text>
-    </PressableOpacity>
+    </TouchableOpacity>
   )
 }
 
@@ -123,9 +132,9 @@ export function DevicesPage({ navigation }: Props): React.ReactElement {
     <View style={styles.container}>
       <View style={styles.headerContainer}>
         <View style={styles.horizontal}>
-          <PressableOpacity style={styles.backButton} onPress={navigation.goBack}>
+          <TouchableOpacity style={styles.backButton} onPress={navigation.goBack}>
             <IonIcon name="chevron-back" size={35} color="black" />
-          </PressableOpacity>
+          </TouchableOpacity>
           <Text style={styles.header}>Camera Devices</Text>
         </View>
         <Text style={styles.subHeader}>

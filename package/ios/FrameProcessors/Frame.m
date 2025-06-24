@@ -34,14 +34,14 @@
 - (void)incrementRefCount {
   CFRetain(_buffer);
   if (_depth) {
-    CFRetain(_depth);
+    CFRetain(CFBridgingRetain(_depth));
   }
 }
 
 - (void)decrementRefCount {
   CFRelease(_buffer);
   if (_depth) {
-    CFRelease(_depth);
+    CFRelease(CFBridgingRetain(_depth));
   }
 }
 

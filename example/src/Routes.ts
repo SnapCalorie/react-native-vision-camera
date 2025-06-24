@@ -5,6 +5,8 @@ export type Routes = {
   MediaPage: {
     path: string
     type: 'video' | 'photo'
+    depthPath?: string
+    depthDims?: { width: number; height: number }
   }
   Devices: undefined
 }

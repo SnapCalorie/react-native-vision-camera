@@ -70,6 +70,14 @@ export interface PhotoFile extends TemporaryFile {
   isMirrored: boolean
   thumbnail?: Record<string, unknown>
   /**
+   * File path for the depth data binary file, if available.
+   */
+  depthPath?: string
+  /**
+   * Dimensions of the depth data.
+   */
+  depthDims?: { width: number; height: number };
+  /**
    * Metadata information describing the captured image. (iOS only)
    *
    * @see [AVCapturePhoto.metadata](https://developer.apple.com/documentation/avfoundation/avcapturephoto/2873982-metadata)

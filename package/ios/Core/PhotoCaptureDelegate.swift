@@ -16,6 +16,7 @@ class PhotoCaptureDelegate: GlobalReferenceHolder, AVCapturePhotoCaptureDelegate
   private let cameraSessionDelegate: CameraSessionDelegate?
   private let metadataProvider: MetadataProvider
   private let path: URL
+  private let capturedOutputOrientation: String
 
   required init(promise: Promise,
                 enableShutterSound: Bool,
@@ -54,7 +55,7 @@ class PhotoCaptureDelegate: GlobalReferenceHolder, AVCapturePhotoCaptureDelegate
       try FileUtils.writePhotoToFile(photo: photo,
                                      metadataProvider: metadataProvider,
                                      file: path)
-
+      
       let exif = photo.metadata["{Exif}"] as? [String: Any]
       let width = exif?["PixelXDimension"]
       let height = exif?["PixelYDimension"]
@@ -62,7 +63,24 @@ class PhotoCaptureDelegate: GlobalReferenceHolder, AVCapturePhotoCaptureDelegate
       let cgOrientation = CGImagePropertyOrientation(rawValue: exifOrientation) ?? CGImagePropertyOrientation.up
       let orientation = getOrientation(forExifOrientation: cgOrientation)
       let isMirrored = getIsMirrored(forExifOrientation: cgOrientation)
-
+      
+      // NEW: Capture and write depth data to a separate bin file if available
+      var depthFilePath: String? = nil
+      var depthDims: [String: Int]? = nil
+      if let depthData = photo.depthData {
+        // Create new URL for the depth data file (e.g., change extension to "depth.bin")
+        let depthFileURL = path.deletingPathExtension().appendingPathExtension("depth.bin")
+        // Write the raw depth data, rotated to match the output orientation
+        try FileUtils.writeDepthToFile(depthData: depthData, file: depthFileURL, orientation: cgOrientation)
+        depthFilePath = depthFileURL.absoluteString
+        // Get depth dimensions from the rotated depthDataMap (matching orientation)
+        let dims = FileUtils.getDepthDimensions(depthData: depthData, orientation: cgOrientation)
+        depthDims = [
+          "width": dims.width,
+          "height": dims.height
+        ]
+      }
+      
       promise.resolve([
         "path": path.absoluteString,
         "width": width as Any,
@@ -72,6 +90,8 @@ class PhotoCaptureDelegate: GlobalReferenceHolder, AVCapturePhotoCaptureDelegate
         "isRawPhoto": photo.isRawPhoto,
         "metadata": photo.metadata,
         "thumbnail": photo.embeddedThumbnailPhotoFormat as Any,
+        "depthPath": depthFilePath as Any,
+        "depthDims": depthDims as Any
       ])
     } catch let error as CameraError {
       promise.reject(error: error)
@@ -115,6 +135,17 @@ class PhotoCaptureDelegate: GlobalReferenceHolder, AVCapturePhotoCaptureDelegate
       return true
     default:
       return false
+    }
+  }
+  
+  // Helper to convert output orientation string to CGImagePropertyOrientation
+  private func cgImagePropertyOrientation(from orientation: String) -> CGImagePropertyOrientation {
+    switch orientation {
+    case "portrait": return .up
+    case "portrait-upside-down": return .down
+    case "landscape-left": return .left
+    case "landscape-right": return .right
+    default: return .up
     }
   }
 }

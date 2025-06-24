@@ -48,10 +48,18 @@ extension CameraSession {
         photoSettings.isHighResolutionPhotoEnabled = photoOutput.isHighResolutionCaptureEnabled
       }
 
-      // depth data
-      photoSettings.isDepthDataDeliveryEnabled = photoOutput.isDepthDataDeliveryEnabled
-      if #available(iOS 12.0, *) {
-        photoSettings.isPortraitEffectsMatteDeliveryEnabled = photoOutput.isPortraitEffectsMatteDeliveryEnabled
+      // Use configuration options for depth data and portrait effects matte
+      if case let .enabled(photoConfig) = configuration.photo {
+        if photoOutput.isDepthDataDeliveryEnabled {
+          photoSettings.isDepthDataDeliveryEnabled = photoConfig.enableDepthData
+        } else {
+          photoSettings.isDepthDataDeliveryEnabled = false
+        }
+        if #available(iOS 12.0, *) {
+          photoSettings.isPortraitEffectsMatteDeliveryEnabled = photoConfig.enablePortraitEffectsMatte
+        }
+      } else {
+        photoSettings.isDepthDataDeliveryEnabled = false
       }
 
       // quality prioritization
