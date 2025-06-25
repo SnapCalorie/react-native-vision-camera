@@ -16,7 +16,6 @@ class PhotoCaptureDelegate: GlobalReferenceHolder, AVCapturePhotoCaptureDelegate
   private let cameraSessionDelegate: CameraSessionDelegate?
   private let metadataProvider: MetadataProvider
   private let path: URL
-  private let capturedOutputOrientation: String
 
   required init(promise: Promise,
                 enableShutterSound: Bool,
