@@ -208,7 +208,10 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
   const photoHdr = format?.supportsPhotoHdr && enableHdr && !videoHdr
 
   // Depth data enabled indicator
-  const isDepthEnabled = !!(device?.supportsDepthData && format?.supportsDepthCapture)
+  const [depthEnabled, setDepthEnabled] = useState(
+    !!(device?.supportsDepthData && format?.supportsDepthCapture)
+  )
+  const isDepthEnabled = depthEnabled && !!(device?.supportsDepthData && format?.supportsDepthCapture)
 
   return (
     <View style={styles.container}>
@@ -245,7 +248,7 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
                 video={true}
                 audio={microphone.hasPermission}
                 enableLocation={location.hasPermission}
-                enableDepthData={device.supportsDepthData}
+                enableDepthData={isDepthEnabled}
                 frameProcessor={frameProcessor}
               />
             </TapGestureHandler>
@@ -295,6 +298,10 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
             <IonIcon name={enableNightMode ? 'moon' : 'moon-outline'} color="white" size={24} />
           </PressableOpacity>
         )}
+        {/* Depth toggle button */}
+        <PressableOpacity style={styles.button} onPress={() => setDepthEnabled((d) => !d)} disabledOpacity={0.4}>
+          <MaterialIcon name={isDepthEnabled ? 'cube' : 'cube-off'} color="white" size={24} />
+        </PressableOpacity>
         <PressableOpacity style={styles.button} onPress={() => navigation.navigate('Devices')}>
           <IonIcon name="settings-outline" color="white" size={24} />
         </PressableOpacity>
