@@ -20,11 +20,9 @@ std::atomic<uint64_t> FrameHostObject::_nextHostObjectId{1};
 
 FrameHostObject::FrameHostObject(Frame* frame)
     : _frame(frame), _baseClass(nullptr), _hostObjectId(_nextHostObjectId++) {
-  NSLog(@"[FrameHostObject] Constructor called, hostObjectId: %llu, _frame: %p", _hostObjectId, _frame);
 }
 
 FrameHostObject::~FrameHostObject() {
-  NSLog(@"[FrameHostObject] Destructor called, hostObjectId: %llu, _frame: %p", _hostObjectId, _frame);
 }
 
 std::vector<jsi::PropNameID> FrameHostObject::getPropertyNames(jsi::Runtime& rt) {
@@ -89,7 +87,6 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
     // Expose dims if available, even if frame is invalid or depth data is released
     NSDictionary* dims = [_frame depthDims];
     if (dims == nil) {
-      NSLog(@"[FrameHostObject] depthDims returned nil");
       return jsi::Value::undefined();
     }
     jsi::Object jsDims(runtime);
@@ -100,7 +97,6 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
       jsDims.setProperty(runtime, "height", jsi::Value([height doubleValue]));
       return jsDims;
     } else {
-      NSLog(@"[FrameHostObject] depthDims missing width or height");
       return jsi::Value::undefined();
     }
   }

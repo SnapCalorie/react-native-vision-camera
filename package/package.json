@@ -156,5 +156,8 @@
         }
       ]
     ]
+  },
+  "devDependencies": {
+    "@expo/config-plugins": "^10.0.3"
   }
 }
