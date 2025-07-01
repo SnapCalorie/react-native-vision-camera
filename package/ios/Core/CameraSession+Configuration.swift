@@ -6,6 +6,7 @@
 //  Copyright © 2023 mrousavy. All rights reserved.
 //
 
+import ARKit
 import AVFoundation
 import Foundation
 
@@ -54,9 +55,14 @@ extension CameraSession {
   // pragma MARK: Outputs
 
   /**
-   Configures all outputs (`photo` + `video` + `depth` + `codeScanner`)
+   Configures all outputs (`photo` + `video` + `depth` + `codeScanner` + `meshWireframe`)
    */
   func configureOutputs(configuration: CameraConfiguration) throws {
+    if configuration.enableMeshWireframe == true, ARWorldTrackingConfiguration.isSupported {
+      try configureARKitSession(configuration: configuration)
+      return
+    }
+
     VisionLogger.log(level: .info, message: "Configuring Outputs...")
 
     // Remove all outputs
@@ -135,6 +141,15 @@ extension CameraSession {
         outputSynchronizer = AVCaptureDataOutputSynchronizer(dataOutputs: [depthOutput, videoOutput])
         outputSynchronizer!.setDelegate(self, queue: CameraQueues.videoQueue)
         self.depthOutput = depthOutput
+
+        // Optionally, set up mesh wireframe if enabled and supported
+        if configuration.enableMeshWireframe == true {
+          // AVFoundation does not provide mesh data directly.
+          // You can expose the depth data to JS/TS for mesh rendering,
+          // or use a custom delegate/callback to process the depth map.
+          VisionLogger.log(level: .info, message: "Mesh wireframe rendering enabled (depth data will be available for mesh approximation).")
+          // No additional AVFoundation setup required; mesh rendering must be done in JS/TS using depth data.
+        }
       } else {
         // Video is the only output - use it's own delegate
         videoOutput.alwaysDiscardsLateVideoFrames = true

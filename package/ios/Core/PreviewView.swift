@@ -61,28 +61,57 @@ final class PreviewView: UIView {
   }
 
   private var isPreviewingObserver: NSKeyValueObservation?
+  private var arView: UIView?
 
-  init(frame: CGRect, session: AVCaptureSession) {
+  // Standard preview initializer
+  init(frame: CGRect, session: AVCaptureSession, enableMeshWireframe: Bool = false) {
     super.init(frame: frame)
-    videoPreviewLayer.session = session
-    videoPreviewLayer.videoGravity = .resizeAspectFill
+    if enableMeshWireframe, #available(iOS 13.0, *) {
+      #if canImport(ARKit)
+      // Use ARSCNView for AR mesh wireframe preview
+      if let ARSCNViewClass = NSClassFromString("ARSCNView") as? UIView.Type {
+        let arView = ARSCNViewClass.init(frame: frame)
+        arView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        self.arView = arView
+        addSubview(arView)
+        // Notify delegate that preview started
+        self.delegate?.onPreviewStarted()
+      }
+      #endif
+    } else {
+      videoPreviewLayer.session = session
+      videoPreviewLayer.videoGravity = .resizeAspectFill
 
-    if #available(iOS 13.0, *) {
-      isPreviewingObserver = videoPreviewLayer.observe(\.isPreviewing, changeHandler: { [weak self] layer, _ in
-        guard let self else { return }
-        if layer.isPreviewing {
-          VisionLogger.log(level: .info, message: "Preview Layer started previewing.")
-          self.delegate?.onPreviewStarted()
-        } else {
-          VisionLogger.log(level: .info, message: "Preview Layer stopped previewing.")
-          self.delegate?.onPreviewStopped()
-        }
-      })
+      if #available(iOS 13.0, *) {
+        isPreviewingObserver = videoPreviewLayer.observe(\.isPreviewing, changeHandler: { [weak self] layer, _ in
+          guard let self else { return }
+          if layer.isPreviewing {
+            VisionLogger.log(level: .info, message: "Preview Layer started previewing.")
+            self.delegate?.onPreviewStarted()
+          } else {
+            VisionLogger.log(level: .info, message: "Preview Layer stopped previewing.")
+            self.delegate?.onPreviewStopped()
+          }
+        })
+      }
     }
+  }
+
+  // ARKit mesh wireframe initializer (no AVCaptureSession)
+  convenience init(frame: CGRect, enableMeshWireframe: Bool) {
+    self.init(frame: frame, session: AVCaptureSession(), enableMeshWireframe: enableMeshWireframe)
   }
 
   @available(*, unavailable)
   required init?(coder _: NSCoder) {
     fatalError("init(coder:) is not implemented!")
+  }
+
+  override func removeFromSuperview() {
+    // If AR mode, notify delegate that preview stopped
+    if arView != nil {
+      self.delegate?.onPreviewStopped()
+    }
+    super.removeFromSuperview()
   }
 }

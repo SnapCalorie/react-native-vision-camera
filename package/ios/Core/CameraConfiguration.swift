@@ -53,6 +53,9 @@ final class CameraConfiguration {
   // Audio Session
   var audio: OutputConfiguration<Audio> = .disabled
 
+  // ARKit configuration
+  var enableMeshWireframe: Bool = false
+
   init(copyOf other: CameraConfiguration?) {
     if let other {
       // copy over all values
@@ -73,6 +76,7 @@ final class CameraConfiguration {
       exposure = other.exposure
       isActive = other.isActive
       audio = other.audio
+      enableMeshWireframe = other.enableMeshWireframe
     } else {
       // self will just be initialized with the default values.
     }
@@ -102,12 +106,15 @@ final class CameraConfiguration {
     let audioSessionChanged: Bool
     let locationChanged: Bool
 
+    // Add mesh wireframe difference
+    let meshWireframeChanged: Bool
+
     /**
      Returns `true` when props that affect the AVCaptureSession configuration (i.e. props that require beginConfiguration()) have changed.
      [`inputChanged`, `outputsChanged`, `orientationChanged`]
      */
     var isSessionConfigurationDirty: Bool {
-      return inputChanged || outputsChanged || videoStabilizationChanged || orientationChanged
+      return inputChanged || outputsChanged || videoStabilizationChanged || orientationChanged || meshWireframeChanged
     }
 
     /**
@@ -145,6 +152,8 @@ final class CameraConfiguration {
 
       // location
       locationChanged = left?.enableLocation != right.enableLocation
+      // mesh wireframe
+      meshWireframeChanged = left?.enableMeshWireframe != right.enableMeshWireframe
     }
   }
 

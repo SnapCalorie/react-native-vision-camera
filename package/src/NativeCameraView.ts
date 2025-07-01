@@ -44,6 +44,7 @@ export type NativeCameraViewProps = Omit<
   maxFps?: number
   videoBitRateOverride?: number
   videoBitRateMultiplier?: number
+  enableMeshWireframe?: boolean
   // private events
   onViewReady: (event: NativeSyntheticEvent<void>) => void
   onAverageFpsChanged?: (event: NativeSyntheticEvent<AverageFpsChangedEvent>) => void

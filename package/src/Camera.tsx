@@ -672,7 +672,9 @@ export class Camera extends React.PureComponent<CameraProps, CameraState> {
         codeScannerOptions={codeScanner}
         enableFrameProcessor={frameProcessor != null}
         enableBufferCompression={props.enableBufferCompression ?? shouldEnableBufferCompression}
-        preview={isRenderingWithSkia ? false : (props.preview ?? true)}>
+        preview={isRenderingWithSkia ? false : (props.preview ?? true)}
+        enableMeshWireframe={props.enableMeshWireframe}
+      >
         {isRenderingWithSkia && (
           <SkiaCameraCanvas
             style={styles.customPreviewView}

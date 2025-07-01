@@ -7,6 +7,7 @@
 //
 
 import AVFoundation
+import ARKit
 import Foundation
 
 /**
@@ -95,7 +96,16 @@ final class CameraSession:
    Creates a PreviewView for the current Capture Session
    */
   func createPreviewView(frame: CGRect) -> PreviewView {
-    return PreviewView(frame: frame, session: captureSession)
+    let enableMeshWireframe = configuration?.enableMeshWireframe ?? false
+    #if canImport(ARKit)
+    if enableMeshWireframe, #available(iOS 13.0, *) {
+      // Show ARKit mesh wireframe view instead of AVCaptureVideoPreviewLayer
+      // This assumes you have an ARKit-based PreviewView initializer
+      return PreviewView(frame: frame, enableMeshWireframe: true)
+    }
+    #endif
+    // Fallback to normal preview
+    return PreviewView(frame: frame, session: captureSession, enableMeshWireframe: false)
   }
 
   func onConfigureError(_ error: Error) {
@@ -158,6 +168,27 @@ final class CameraSession:
           if difference.orientationChanged {
             self.orientationManager.setTargetOutputOrientation(config.outputOrientation)
           }
+          // Handle mesh wireframe mode switch
+          if difference.meshWireframeChanged {
+            #if canImport(ARKit)
+            if config.enableMeshWireframe, ARWorldTrackingConfiguration.isSupported {
+              // Switch to ARKit session
+              try self.configureARKitSession(configuration: config)
+            } else {
+              // Switch back to standard outputs
+              // Remove ARKit session if present
+              if #available(iOS 13.0, *) {
+                if let arSession = self.arSession {
+                  arSession.pause()
+                  self.arSession = nil
+                }
+              }
+              // Reconfigure standard outputs
+              try self.configureOutputs(configuration: config)
+            }
+            #endif
+          }
+          self.captureSession.commitConfiguration()
         }
 
         guard let device = self.videoDeviceInput?.device else {

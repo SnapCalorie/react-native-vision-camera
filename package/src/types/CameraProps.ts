@@ -321,6 +321,17 @@ export interface CameraProps extends ViewProps {
    */
   isMirrored?: boolean
 
+  /**
+   * Enables or disables mesh wireframe visualization using ARKit when available.
+   * Only works on compatible iOS devices with LiDAR sensors or TrueDepth cameras.
+   * When enabled, the camera will use ARKit's scene reconstruction functionality
+   * to visualize a wireframe mesh of the environment.
+   *
+   * @platform iOS 13.0+
+   * @default false
+   */
+  enableMeshWireframe?: boolean
+
   //#region Events
   /**
    * Called when any kind of runtime error occured.

@@ -29,6 +29,7 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
   @objc var enablePortraitEffectsMatteDelivery = false
   @objc var enableBufferCompression = false
   @objc var isMirrored = false
+  @objc var enableMeshWireframe = false
 
   // use cases
   @objc var photo = false
@@ -110,6 +111,9 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
 
   // CameraView+TakeSnapshot
   var latestVideoFrame: Snapshot?
+
+  // Track last mesh wireframe state for preview recreation
+  private var lastEnableMeshWireframe: Bool?
 
   // pragma MARK: Setup
 
@@ -273,6 +277,9 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
 
       // isActive
       config.isActive = isActive
+
+      // Configure ARKit settings
+      config.enableMeshWireframe = enableMeshWireframe
     }
 
     // Store `zoom` offset for native pinch-gesture
@@ -285,15 +292,21 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
   }
 
   func updatePreview() {
-    if preview && previewView == nil {
+    let meshWireframeChanged = lastEnableMeshWireframe != enableMeshWireframe
+    if preview && (previewView == nil || meshWireframeChanged) {
+      // Remove old PreviewView if present
+      previewView?.removeFromSuperview()
+      previewView = nil
       // Create PreviewView and add it
       previewView = cameraSession.createPreviewView(frame: frame)
       previewView!.delegate = self
       addSubview(previewView!)
+      lastEnableMeshWireframe = enableMeshWireframe
     } else if !preview && previewView != nil {
       // Remove PreviewView and destroy it
       previewView?.removeFromSuperview()
       previewView = nil
+      lastEnableMeshWireframe = enableMeshWireframe
     }
 
     if let previewView {

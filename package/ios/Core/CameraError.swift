@@ -360,6 +360,7 @@ enum CameraError: Error {
   case codeScanner(_ id: CodeScannerError)
   case system(_ id: SystemError)
   case unknown(message: String? = nil, cause: NSError? = nil)
+  case arKit(_ error: ARKitError)
 
   var code: String {
     switch self {
@@ -381,6 +382,8 @@ enum CameraError: Error {
       return "system/\(id.code)"
     case .unknown:
       return "unknown/unknown"
+    case let .arKit(error: error):
+      return "arkit/\(error.code)"
     }
   }
 
@@ -404,6 +407,8 @@ enum CameraError: Error {
       return id.message
     case let .unknown(message: message, cause: cause):
       return message ?? cause?.description ?? "An unexpected error occured."
+    case let .arKit(error: error):
+      return error.message
     }
   }
 
@@ -413,6 +418,38 @@ enum CameraError: Error {
       return cause
     default:
       return nil
+    }
+  }
+
+  enum ARKitError: CustomStringConvertible, Equatable {
+    case arKitNotSupported
+    case sessionFailed(error: NSError)
+
+    var code: String {
+      switch self {
+      case .arKitNotSupported:
+        return "arkit-not-supported"
+      case .sessionFailed:
+        return "arkit-session-failed"
+      }
+    }
+
+    var message: String {
+      switch self {
+      case .arKitNotSupported:
+        return "ARKit is not supported on this device."
+      case .sessionFailed(let error):
+        return "ARKit session failed: \(error.localizedDescription)"
+      }
+    }
+
+    var description: String {
+      switch self {
+      case .arKitNotSupported:
+        return "ARKit is not supported on this device."
+      case .sessionFailed(let error):
+        return "ARKit session failed: \(error.localizedDescription)"
+      }
     }
   }
 }

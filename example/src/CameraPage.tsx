@@ -75,6 +75,9 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
 
   const [targetFps, setTargetFps] = useState(60)
 
+  // Add state for mesh wireframe
+  const [enableMeshWireframe, setEnableMeshWireframe] = useState(false)
+
   const screenAspectRatio = SCREEN_HEIGHT / SCREEN_WIDTH
   const format = useCameraFormat(device, [
     { depth: true },
@@ -264,6 +267,8 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
                 enableLocation={location.hasPermission}
                 enableDepthData={isDepthEnabled}
                 frameProcessor={frameProcessor}
+                // Add mesh wireframe prop
+                enableMeshWireframe={enableMeshWireframe}
               />
             </TapGestureHandler>
           </Reanimated.View>
@@ -315,6 +320,21 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
         {/* Depth toggle button */}
         <PressableOpacity style={styles.button} onPress={() => setDepthEnabled((d) => !d)} disabledOpacity={0.4}>
           <MaterialIcon name={isDepthEnabled ? 'cube' : 'cube-off'} color="white" size={24} />
+        </PressableOpacity>
+        {/* Mesh wireframe toggle button */}
+        <PressableOpacity
+          style={[
+            styles.button,
+            enableMeshWireframe && { backgroundColor: '#1ec773' }
+          ]}
+          onPress={() => setEnableMeshWireframe((v) => !v)}
+          disabledOpacity={0.4}
+        >
+          <MaterialIcon
+            name={enableMeshWireframe ? 'vector-square' : 'vector-square-close'}
+            color={enableMeshWireframe ? 'black' : 'white'}
+            size={28}
+          />
         </PressableOpacity>
         <PressableOpacity style={styles.button} onPress={() => navigation.navigate('Devices')}>
           <IonIcon name="settings-outline" color="white" size={24} />
