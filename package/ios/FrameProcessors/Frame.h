@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)incrementRefCount;
 - (void)decrementRefCount;
+- (BOOL)depthIsValid;
 
 @property(nonatomic, readonly) CMSampleBufferRef buffer;
 @property(nonatomic, readonly, nullable) AVDepthData* depth;
