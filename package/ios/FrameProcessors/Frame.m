@@ -27,6 +27,10 @@
     _orientation = orientation;
     _isMirrored = isMirrored;
     _depth = depth;
+    NSLog(@"[Frame] Allocated: %p, buffer: %p, depth: %p, buffer retain count: %ld", self, buffer, depth, (long)CFGetRetainCount(buffer));
+    if (_depth) {
+      NSLog(@"[Frame] Allocated depth retain count: %p, depth: %p, depth retain count: %ld", self, _depth, (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)));
+    }
   }
   return self;
 }
@@ -35,17 +39,29 @@
   CFRetain(_buffer);
   if (_depth) {
     CFRetain((__bridge CFTypeRef)(_depth));
+    NSLog(@"[Frame] Incremented depth retain count: %p, depth: %p, depth retain count: %ld", self, _depth, (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)));
   }
+
+  NSLog(@"[Frame] incrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
 }
 
 - (void)decrementRefCount {
   CFRelease(_buffer);
   if (_depth) {
     CFRelease((__bridge CFTypeRef)(_depth));
+    NSLog(@"[Frame] Decremented depth retain count: %p, depth: %p, depth retain count: %ld", self, _depth, (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)));
   }
+
+  NSLog(@"[Frame] decrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
+}
+
+- (void)dealloc {
+  NSLog(@"[Frame] Deallocated: %p, buffer: %p, depth: %p", self, _buffer, _depth);
+  _depth = nil; // Release depth data
 }
 
 - (CMSampleBufferRef)buffer {
+  NSLog(@"[Frame] buffer accessed: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
   if (!self.isValid) {
     @throw [[NSException alloc] initWithName:@"capture/frame-invalid"
                                       reason:@"Trying to access an already closed Frame! "
@@ -58,7 +74,23 @@
   return _buffer;
 }
 
+- (BOOL)depthIsValid {
+  if (_depth == nil) return NO;
+  return CFGetRetainCount((__bridge CFTypeRef)(_depth)) > 0;
+}
+
 - (nullable AVDepthData*)depth {
+  NSLog(@"[Frame] depth accessed: %p, depth: %p, depth retain count: %ld", self, _depth, (long)(_depth ? CFGetRetainCount((__bridge CFTypeRef)(_depth)) : 0));
+  if (!self.isValid) {
+    @throw [[NSException alloc] initWithName:@"capture/depth-invalid"
+                                      reason:@"Trying to access an already closed Frame's depth data!\n- If you want to use depth data outside of a Frame Processor's lifetime, use runAsync(...) or incrementRefCount()."
+                                    userInfo:nil];
+  }
+  if (_depth && ![self depthIsValid]) {
+    @throw [[NSException alloc] initWithName:@"capture/depth-invalid"
+                                      reason:@"Trying to access an already released depth data object!\n- If you want to use depth data outside of a Frame Processor's lifetime, use runAsync(...) or incrementRefCount()."
+                                    userInfo:nil];
+  }
   return _depth;
 }
 
