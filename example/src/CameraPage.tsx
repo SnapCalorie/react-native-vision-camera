@@ -47,11 +47,13 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
   const location = useLocationPermission()
   const zoom = useSharedValue(1)
   const isPressingButton = useSharedValue(false)
+  const [cameraActive, setCameraActive] = useState(true)
+  const [showCamera, setShowCamera] = useState(true)
 
   // check if camera page is active
   const isFocussed = useIsFocused()
   const isForeground = useIsForeground()
-  const isActive = isFocussed && isForeground
+  const isActive = isFocussed && isForeground && cameraActive
 
   const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>('back')
   const [enableHdr, setEnableHdr] = useState(false)
@@ -215,7 +217,7 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      {device != null ? (
+      {showCamera && device != null ? (
         <PinchGestureHandler onGestureEvent={onPinchGesture} enabled={isActive}>
           <Reanimated.View onTouchEnd={onFocusTap} style={StyleSheet.absoluteFill}>
             <TapGestureHandler onEnded={onDoubleTap} numberOfTaps={2}>
@@ -307,6 +309,12 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
         </PressableOpacity>
         <PressableOpacity style={styles.button} onPress={() => navigation.navigate('CodeScannerPage')}>
           <IonIcon name="qr-code-outline" color="white" size={24} />
+        </PressableOpacity>
+        <PressableOpacity style={styles.button} onPress={() => setCameraActive((a) => !a)}>
+          <MaterialIcon name={cameraActive ? 'camera' : 'camera-off'} color="white" size={24} />
+        </PressableOpacity>
+        <PressableOpacity style={styles.button} onPress={() => setShowCamera((s) => !s)}>
+          <MaterialIcon name={showCamera ? 'video' : 'video-off'} color="white" size={24} />
         </PressableOpacity>
       </View>
 

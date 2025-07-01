@@ -72,6 +72,7 @@ jsi::Value convertObjCObjectToJSIValue(jsi::Runtime& runtime, id value) {
 
     Frame* frame = (Frame*)value;
     auto frameHostObject = std::make_shared<FrameHostObject>(frame);
+    NSLog(@"[JSI-JSINSObjectConversion] Passing FrameHostObject %p to JS", frameHostObject.get());
     return jsi::Object::createFromHostObject(runtime, frameHostObject);
   } else if ([value isKindOfClass:[SharedArray class]]) {
     // SharedArray

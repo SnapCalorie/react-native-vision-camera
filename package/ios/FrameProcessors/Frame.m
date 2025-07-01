@@ -39,7 +39,12 @@
   CFRetain(_buffer);
   if (_depth) {
     CFRetain((__bridge CFTypeRef)(_depth));
-    NSLog(@"[Frame] Incremented depth retain count: %p, depth: %p, depth retain count: %ld", self, _depth, (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)));
+    NSLog(@"[Frame] Incremented depth retain count: %p, depth: %p, depth retain count: %ld, depthDataMap: %p, depthDataMap retain count: %ld", 
+      self, 
+      _depth, 
+      (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)),
+      _depth.depthDataMap,
+      (long)CFGetRetainCount(_depth.depthDataMap));
   }
 
   NSLog(@"[Frame] incrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
@@ -48,16 +53,41 @@
 - (void)decrementRefCount {
   CFRelease(_buffer);
   if (_depth) {
+    // Log before release
+    NSLog(@"[Frame] Before decrement depth retain count: %p, depth: %p, depth retain count: %ld, depthDataMap: %p, depthDataMap retain count: %ld", 
+      self, 
+      _depth, 
+      (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)),
+      _depth.depthDataMap,
+      (long)CFGetRetainCount(_depth.depthDataMap));
+    
     CFRelease((__bridge CFTypeRef)(_depth));
-    NSLog(@"[Frame] Decremented depth retain count: %p, depth: %p, depth retain count: %ld", self, _depth, (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)));
+    
+    // Log after release
+    NSLog(@"[Frame] After decrement depth retain count: %p, depth: %p, depth retain count: %ld, depthDataMap: %p, depthDataMap retain count: %ld", 
+      self, 
+      _depth, 
+      (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)),
+      _depth.depthDataMap,
+      (long)CFGetRetainCount(_depth.depthDataMap));
   }
 
   NSLog(@"[Frame] decrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
 }
 
 - (void)dealloc {
+  NSLog(@"[Frame] Deallocating Frame: %p", self);
+  if (_buffer != nil) {
+    NSLog(@"[Frame] Deallocating, buffer: %p, retain count: %ld", _buffer, CFGetRetainCount(_buffer));
+    // No need to CFRelease here if ownership is correct (released in decrementRefCount)
+    _buffer = nil;
+  }
+  if (_depth != nil) {
+    NSLog(@"[Frame] Deallocating, depth: %p, retain count: %ld", _depth, CFGetRetainCount((__bridge CFTypeRef)_depth));
+    // No need to CFRelease here if ownership is correct (released in decrementRefCount)
+    _depth = nil;
+  }
   NSLog(@"[Frame] Deallocated: %p, buffer: %p, depth: %p", self, _buffer, _depth);
-  _depth = nil; // Release depth data
 }
 
 - (CMSampleBufferRef)buffer {

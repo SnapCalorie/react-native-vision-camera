@@ -18,12 +18,8 @@ using namespace facebook;
 
 class JSI_EXPORT FrameHostObject : public jsi::HostObject, public std::enable_shared_from_this<FrameHostObject> {
 public:
-  explicit FrameHostObject(Frame* frame) : _frame(frame), _baseClass(nullptr) {
-    NSLog(@"[FrameHostObject] Constructor called, _frame: %p", _frame);
-  }
-  ~FrameHostObject() {
-    NSLog(@"[FrameHostObject] Destructor called, _frame: %p", _frame);
-  }
+  explicit FrameHostObject(Frame* frame);
+  ~FrameHostObject();
 
 public:
   jsi::Value get(jsi::Runtime&, const jsi::PropNameID& name) override;
@@ -33,8 +29,13 @@ public:
   inline Frame* getFrame() const noexcept {
     return _frame;
   }
+  inline uint64_t getHostObjectId() const noexcept {
+    return _hostObjectId;
+  }
 
 private:
   Frame* _frame;
   std::unique_ptr<jsi::Object> _baseClass;
+  uint64_t _hostObjectId;
+  static std::atomic<uint64_t> _nextHostObjectId;
 };
