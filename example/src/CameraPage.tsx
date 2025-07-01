@@ -199,7 +199,7 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
         'worklet'
         // examplePlugin(frame)
         // exampleKotlinSwiftPlugin(frame)
-
+        console.log(`Frame has depth: ${frame.hasDepth}`)
         console.log(`Frame Processor: ${frame.timestamp} - ${frame.width}x${frame.height} ${frame.pixelFormat} (${frame.orientation})`)
       })
     },

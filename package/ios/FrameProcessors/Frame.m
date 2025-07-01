@@ -14,80 +14,58 @@
   CMSampleBufferRef _Nonnull _buffer;
   UIImageOrientation _orientation;
   BOOL _isMirrored;
-  AVDepthData* _Nullable _depth;
+  NSData *_depthDataMap;
+  BOOL _depthDataMapValid;
+  size_t _depthWidth;
+  size_t _depthHeight;
 }
 
 - (instancetype)initWithBuffer:(CMSampleBufferRef)buffer
                    orientation:(UIImageOrientation)orientation
                     isMirrored:(BOOL)isMirrored
-                     depthData:(nullable AVDepthData*)depth {
+                     depthData:(AVDepthData *)depthData {
   self = [super init];
   if (self) {
     _buffer = buffer;
     _orientation = orientation;
     _isMirrored = isMirrored;
-    _depth = depth;
-    NSLog(@"[Frame] Allocated: %p, buffer: %p, depth: %p, buffer retain count: %ld", self, buffer, depth, (long)CFGetRetainCount(buffer));
-    if (_depth) {
-      NSLog(@"[Frame] Allocated depth retain count: %p, depth: %p, depth retain count: %ld", self, _depth, (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)));
+    if (depthData != nil) {
+      CVPixelBufferRef depthBuffer = depthData.depthDataMap;
+      CVPixelBufferLockBaseAddress(depthBuffer, kCVPixelBufferLock_ReadOnly);
+      void *baseAddress = CVPixelBufferGetBaseAddress(depthBuffer);
+      size_t dataSize = CVPixelBufferGetDataSize(depthBuffer);
+      _depthDataMap = [NSData dataWithBytes:baseAddress length:dataSize];
+      _depthWidth = CVPixelBufferGetWidth(depthBuffer);
+      _depthHeight = CVPixelBufferGetHeight(depthBuffer);
+      CVPixelBufferUnlockBaseAddress(depthBuffer, kCVPixelBufferLock_ReadOnly);
+      _depthDataMapValid = YES;
+    } else {
+      _depthDataMap = nil;
+      _depthDataMapValid = NO;
+      _depthWidth = 0;
+      _depthHeight = 0;
     }
+    NSLog(@"[Frame] Allocated: %p, buffer: %p, buffer retain count: %ld", self, buffer, (long)CFGetRetainCount(buffer));
   }
   return self;
 }
 
 - (void)incrementRefCount {
   CFRetain(_buffer);
-  if (_depth) {
-    CFRetain((__bridge CFTypeRef)(_depth));
-    NSLog(@"[Frame] Incremented depth retain count: %p, depth: %p, depth retain count: %ld, depthDataMap: %p, depthDataMap retain count: %ld", 
-      self, 
-      _depth, 
-      (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)),
-      _depth.depthDataMap,
-      (long)CFGetRetainCount(_depth.depthDataMap));
-  }
-
   NSLog(@"[Frame] incrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
 }
 
 - (void)decrementRefCount {
   CFRelease(_buffer);
-  if (_depth) {
-    // Log before release
-    NSLog(@"[Frame] Before decrement depth retain count: %p, depth: %p, depth retain count: %ld, depthDataMap: %p, depthDataMap retain count: %ld", 
-      self, 
-      _depth, 
-      (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)),
-      _depth.depthDataMap,
-      (long)CFGetRetainCount(_depth.depthDataMap));
-    
-    CFRelease((__bridge CFTypeRef)(_depth));
-    
-    // Log after release
-    NSLog(@"[Frame] After decrement depth retain count: %p, depth: %p, depth retain count: %ld, depthDataMap: %p, depthDataMap retain count: %ld", 
-      self, 
-      _depth, 
-      (long)CFGetRetainCount((__bridge CFTypeRef)(_depth)),
-      _depth.depthDataMap,
-      (long)CFGetRetainCount(_depth.depthDataMap));
-  }
-
   NSLog(@"[Frame] decrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
 }
 
 - (void)dealloc {
-  NSLog(@"[Frame] Deallocating Frame: %p", self);
-  if (_buffer != nil) {
-    NSLog(@"[Frame] Deallocating, buffer: %p, retain count: %ld", _buffer, CFGetRetainCount(_buffer));
-    // No need to CFRelease here if ownership is correct (released in decrementRefCount)
-    _buffer = nil;
-  }
-  if (_depth != nil) {
-    NSLog(@"[Frame] Deallocating, depth: %p, retain count: %ld", _depth, CFGetRetainCount((__bridge CFTypeRef)_depth));
-    // No need to CFRelease here if ownership is correct (released in decrementRefCount)
-    _depth = nil;
-  }
-  NSLog(@"[Frame] Deallocated: %p, buffer: %p, depth: %p", self, _buffer, _depth);
+  NSLog(@"[Frame] Deallocated: %p, buffer: %p", self, _buffer);
+  _depthDataMap = nil;
+  _depthDataMapValid = NO;
+  _depthWidth = 0;
+  _depthHeight = 0;
 }
 
 - (CMSampleBufferRef)buffer {
@@ -102,26 +80,6 @@
                                     userInfo:nil];
   }
   return _buffer;
-}
-
-- (BOOL)depthIsValid {
-  if (_depth == nil) return NO;
-  return CFGetRetainCount((__bridge CFTypeRef)(_depth)) > 0;
-}
-
-- (nullable AVDepthData*)depth {
-  NSLog(@"[Frame] depth accessed: %p, depth: %p, depth retain count: %ld", self, _depth, (long)(_depth ? CFGetRetainCount((__bridge CFTypeRef)(_depth)) : 0));
-  if (!self.isValid) {
-    @throw [[NSException alloc] initWithName:@"capture/depth-invalid"
-                                      reason:@"Trying to access an already closed Frame's depth data!\n- If you want to use depth data outside of a Frame Processor's lifetime, use runAsync(...) or incrementRefCount()."
-                                    userInfo:nil];
-  }
-  if (_depth && ![self depthIsValid]) {
-    @throw [[NSException alloc] initWithName:@"capture/depth-invalid"
-                                      reason:@"Trying to access an already released depth data object!\n- If you want to use depth data outside of a Frame Processor's lifetime, use runAsync(...) or incrementRefCount()."
-                                    userInfo:nil];
-  }
-  return _depth;
 }
 
 - (BOOL)isValid {
@@ -179,6 +137,41 @@
 - (size_t)planesCount {
   CVPixelBufferRef imageBuffer = CMSampleBufferGetImageBuffer(self.buffer);
   return CVPixelBufferGetPlaneCount(imageBuffer);
+}
+
+- (BOOL)hasDepth {
+  if (!self.isValid || !_depthDataMapValid) {
+    return NO;
+  }
+  return (_depthDataMap != nil);
+}
+
+// Returns a copy of the depth data map, or nil if not available or not valid
+- (NSData *)depthDataMap {
+  if (!self.isValid || !_depthDataMapValid) {
+    return nil;
+  }
+  return _depthDataMap;
+}
+
+// Optionally, add a method to explicitly invalidate the depth map if needed
+- (void)invalidateDepthDataMap {
+  _depthDataMap = nil;
+  _depthDataMapValid = NO;
+  // Do NOT reset _depthWidth/_depthHeight here, so metadata is still available after invalidation
+}
+
+// Always return dimensions if they were ever set, even if frame is invalid or depth data is released
+- (NSDictionary *)depthDims {
+  if (_depthWidth == 0 || _depthHeight == 0) {
+    NSLog(@"[Frame] depthDims has invalid dimensions: %zu x %zu", _depthWidth, _depthHeight);
+    return nil;
+  }
+  NSLog(@"[Frame] depthDims returning dimensions: %zu x %zu", _depthWidth, _depthHeight);
+  return @{
+    @"width": @(_depthWidth),
+    @"height": @(_depthHeight)
+  };
 }
 
 @end

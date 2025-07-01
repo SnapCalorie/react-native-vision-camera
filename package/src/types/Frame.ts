@@ -65,12 +65,15 @@ export interface Frame {
   readonly pixelFormat: PixelFormat
 
   /**
-   * Represents the depth data of this Frame, if the Camera is configured to stream depth data.
+   * True if this Frame was captured with depth data available. No depth data is accessible from JS unless valid.
    */
-  readonly depth?: {
-    readonly width: number
-    readonly height: number
-  }
+  readonly hasDepth: boolean
+
+  /**
+   * If this Frame has depth data, contains the dimensions of the depth map.
+   * Otherwise, undefined.
+   */
+  readonly depthDims?: { readonly width: number; readonly height: number }
 
   /**
    * Get the underlying data of the Frame as a uint8 array buffer.
@@ -94,6 +97,11 @@ export interface Frame {
    */
   toArrayBuffer(): ArrayBuffer
   /**
+   * Get the depth data as a uint8 array buffer, if available and valid.
+   * This buffer is only available once per frame and will be invalidated after use.
+   */
+  depthToArrayBuffer?(): ArrayBuffer | undefined
+  /**
    * Returns a string representation of the frame.
    * @example
    * ```ts
@@ -112,32 +120,6 @@ export interface Frame {
    * the {@linkcode NativeBuffer}.
    */
   getNativeBuffer(): NativeBuffer
-
-  /**
-   * Get the underlying depth data of the Frame as a uint8 array buffer.
-   *
-   * The format of the buffer depends on the camera's depth configuration.
-   *
-   * If the Frame does not contain depth information, this method returns `undefined`.
-   *
-   * Note that retrieving the depth buffer will copy the depth data from the GPU to the CPU.
-   *
-   * @example
-   * ```ts
-   * const frameProcessor = useFrameProcessor((frame) => {
-   *   'worklet'
-   *
-   *   if (frame.depth) {
-   *     const depthBuffer = frame.depthToArrayBuffer()
-   *     if (depthBuffer) {
-   *       const data = new Uint8Array(depthBuffer)
-   *       console.log(`Depth info: ${data.length} bytes`)
-   *     }
-   *   }
-   * }, [])
-   * ```
-   */
-  depthToArrayBuffer(): ArrayBuffer | undefined
 }
 
 /**

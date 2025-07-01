@@ -44,6 +44,9 @@ std::vector<jsi::PropNameID> FrameHostObject::getPropertyNames(jsi::Runtime& rt)
     result.push_back(jsi::PropNameID::forUtf8(rt, "isMirrored"));
     result.push_back(jsi::PropNameID::forUtf8(rt, "timestamp"));
     result.push_back(jsi::PropNameID::forUtf8(rt, "pixelFormat"));
+    result.push_back(jsi::PropNameID::forUtf8(rt, "hasDepth"));
+    result.push_back(jsi::PropNameID::forUtf8(rt, "depthDims"));
+    result.push_back(jsi::PropNameID::forUtf8(rt, "depthToArrayBuffer"));
     // Conversion
     result.push_back(jsi::PropNameID::forUtf8(rt, "toString"));
     result.push_back(jsi::PropNameID::forUtf8(rt, "toArrayBuffer"));
@@ -79,6 +82,49 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
   if (name == "pixelFormat") {
     return jsi::String::createFromUtf8(runtime, _frame.pixelFormat.UTF8String);
   }
+  if (name == "hasDepth") {
+    return jsi::Value(_frame.hasDepth);
+  }
+  if (name == "depthDims") {
+    // Expose dims if available, even if frame is invalid or depth data is released
+    NSDictionary* dims = [_frame depthDims];
+    if (dims == nil) {
+      NSLog(@"[FrameHostObject] depthDims returned nil");
+      return jsi::Value::undefined();
+    }
+    jsi::Object jsDims(runtime);
+    NSNumber* width = dims[@"width"];
+    NSNumber* height = dims[@"height"];
+    if (width != nil && height != nil) {
+      jsDims.setProperty(runtime, "width", jsi::Value([width doubleValue]));
+      jsDims.setProperty(runtime, "height", jsi::Value([height doubleValue]));
+      return jsDims;
+    } else {
+      NSLog(@"[FrameHostObject] depthDims missing width or height");
+      return jsi::Value::undefined();
+    }
+  }
+
+  if (name == "depthToArrayBuffer") {
+    auto depthToArrayBuffer = JSI_FUNC {
+      if (!_frame.isValid || !_frame.hasDepth) {
+        return jsi::Value::undefined();
+      }
+      NSData* depthData = [_frame depthDataMap];
+      if (depthData == nil) {
+        return jsi::Value::undefined();
+      }
+      size_t arraySize = depthData.length;
+      auto mutableBuffer = std::make_shared<vision::MutableRawBuffer>(arraySize);
+      memcpy(mutableBuffer->data(), depthData.bytes, arraySize);
+      jsi::ArrayBuffer arrayBuffer(runtime, mutableBuffer);
+      // Optionally, invalidate after use to avoid memory growth
+      [_frame invalidateDepthDataMap];
+      return arrayBuffer;
+    };
+    return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "depthToArrayBuffer"), 0, depthToArrayBuffer);
+  }
+
   if (name == "isValid") {
     return jsi::Value(_frame != nil && _frame.isValid);
   }
@@ -88,41 +134,12 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
   if (name == "planesCount") {
     return jsi::Value((double)_frame.planesCount);
   }
-  if (name == "depth") {
-    void* depthPtr = nullptr;
-    NSUInteger retainCount = 0;
-    NSUInteger depthMapRetainCount = 0;
-    if (_frame.depth != nil) {
-      depthPtr = (__bridge void*)_frame.depth;
-      retainCount = CFGetRetainCount((__bridge CFTypeRef)(_frame.depth));
-      depthMapRetainCount = CFGetRetainCount(_frame.depth.depthDataMap);
-    }
-    NSLog(@"[FrameHostObject] depth property accessed, hostObjectId: %llu, _frame: %p, depth: %p, depth retainCount: %lu, depthDataMap: %p, depthDataMap retainCount: %lu",
-          _hostObjectId, _frame, depthPtr, (unsigned long)retainCount, 
-          _frame.depth.depthDataMap, (unsigned long)depthMapRetainCount);
-
-    if (_frame.depth == nil) {
-      return jsi::Value::undefined();
-    }
-    jsi::Object object(runtime);
-    CVPixelBufferRef depthMap = _frame.depth.depthDataMap;
-    object.setProperty(runtime, "width", jsi::Value(static_cast<double>(CVPixelBufferGetWidth(depthMap))));
-    object.setProperty(runtime, "height", jsi::Value(static_cast<double>(CVPixelBufferGetHeight(depthMap))));
-    return object;
-  }
 
   // Internal methods
   if (name == "incrementRefCount") {
     auto incrementRefCount = [=, this](jsi::Runtime & runtime, const jsi::Value& thisValue, const jsi::Value* arguments, size_t count) -> jsi::Value {
       [_frame incrementRefCount];
-      void* depthPtr = nullptr;
-      NSUInteger retainCount = 0;
-      if (_frame.depth != nil) {
-        depthPtr = (void*)_frame.depth.depthDataMap;
-        retainCount = CFGetRetainCount(_frame.depth.depthDataMap);
-      }
-      NSLog(@"[FrameHostObject] incrementRefCount called, hostObjectId: %llu, _frame: %p, depth: %p, depth retainCount: %lu",
-            _hostObjectId, _frame, depthPtr, (unsigned long)retainCount);
+      // depth removed: no depthPtr, retainCount, or logging for depth
       return jsi::Value::undefined();
     };
     return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "incrementRefCount"), 0, incrementRefCount);
@@ -130,14 +147,7 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
   if (name == "decrementRefCount") {
     auto decrementRefCount = [=, this](jsi::Runtime & runtime, const jsi::Value& thisValue, const jsi::Value* arguments, size_t count) -> jsi::Value {
       [_frame decrementRefCount];
-      void* depthPtr = nullptr;
-      NSUInteger retainCount = 0;
-      if (_frame.depth != nil) {
-        depthPtr = (void*)_frame.depth.depthDataMap;
-        retainCount = CFGetRetainCount(_frame.depth.depthDataMap);
-      }
-      NSLog(@"[FrameHostObject] decrementRefCount called, hostObjectId: %llu, _frame: %p, depth: %p, depth retainCount: %lu",
-            _hostObjectId, _frame, depthPtr, (unsigned long)retainCount);
+      // depth removed: no depthPtr, retainCount, or logging for depth
       return jsi::Value::undefined();
     };
     return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "decrementRefCount"), 0, decrementRefCount);
@@ -197,49 +207,6 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
       return arrayBuffer;
     };
     return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "toArrayBuffer"), 0, toArrayBuffer);
-  }
-  
-  // Updated depthToArrayBuffer method with caching to prevent memory exhaustion
-   if (name == "depthToArrayBuffer") {
-    auto depthToArrayBuffer = JSI_FUNC {
-      if (_frame.depth == nil) {
-        return jsi::Value::undefined();
-      }
-      
-      // Check if depth data is valid
-      if (![_frame depthIsValid]) {
-        NSLog(@"[FrameHostObject] Depth data is no longer valid");
-        return jsi::Value::undefined();
-      }
-      
-      CVPixelBufferRef depthBuffer = _frame.depth.depthDataMap;
-      if (depthBuffer == nil) {
-        NSLog(@"[FrameHostObject] Depth map is nil");
-        return jsi::Value::undefined();
-      }
-      
-      auto bytesPerRow = CVPixelBufferGetBytesPerRow(depthBuffer);
-      auto height = CVPixelBufferGetHeight(depthBuffer);
-      auto arraySize = bytesPerRow * height;
-      
-      // DO NOT cache the depth buffer globally! Always allocate a new buffer per call.
-      auto mutableBuffer = std::make_shared<vision::MutableRawBuffer>(arraySize);
-      jsi::ArrayBuffer arrayBuffer(runtime, mutableBuffer);
-
-      // Lock and copy data
-      if (CVPixelBufferLockBaseAddress(depthBuffer, kCVPixelBufferLock_ReadOnly) != kCVReturnSuccess) {
-        NSLog(@"[FrameHostObject] Failed to lock depth buffer");
-        return jsi::Value::undefined();
-      }
-      
-      auto baseAddress = CVPixelBufferGetBaseAddress(depthBuffer);
-      memcpy(arrayBuffer.data(runtime), baseAddress, arraySize);
-      CVPixelBufferUnlockBaseAddress(depthBuffer, kCVPixelBufferLock_ReadOnly);
-      
-      NSLog(@"[FrameHostObject] Successfully copied depth data of size %zu bytes", arraySize);
-      return arrayBuffer;
-    };
-    return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "depthToArrayBuffer"), 0, depthToArrayBuffer);
   }
 
   if (name == "toString") {
