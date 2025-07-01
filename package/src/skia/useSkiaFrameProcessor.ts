@@ -199,9 +199,8 @@ export function createSkiaFrameProcessor(
     const threadId = Worklets.getCurrentThreadId()
     const size = getSurfaceSize(frame)
     if (
-      surfaceHolder.value[threadId] == null ||
-      surfaceHolder.value[threadId].width !== size.width ||
-      surfaceHolder.value[threadId].height !== size.height
+      surfaceHolder.value[threadId]?.width !== size.width ||
+      surfaceHolder.value[threadId]?.height !== size.height
     ) {
       const surface = Skia.Surface.MakeOffscreen(size.width, size.height)
       if (surface == null) {
@@ -212,7 +211,7 @@ export function createSkiaFrameProcessor(
       delete surfaceHolder.value[threadId]
       surfaceHolder.value[threadId] = { surface: surface, width: size.width, height: size.height }
     }
-    const surface = surfaceHolder.value[threadId].surface
+    const surface = surfaceHolder.value[threadId]?.surface ?? (() => { throw new Error('Skia Surface not found!') })()
     return surface
   }
 

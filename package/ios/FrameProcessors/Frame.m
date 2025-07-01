@@ -45,31 +45,22 @@
       _depthWidth = 0;
       _depthHeight = 0;
     }
-    NSLog(@"[Frame] Allocated: %p, buffer: %p, buffer retain count: %ld", self, buffer, (long)CFGetRetainCount(buffer));
   }
   return self;
 }
 
 - (void)incrementRefCount {
   CFRetain(_buffer);
-  NSLog(@"[Frame] incrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
 }
 
 - (void)decrementRefCount {
   CFRelease(_buffer);
-  NSLog(@"[Frame] decrementRefCount: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
 }
 
 - (void)dealloc {
-  NSLog(@"[Frame] Deallocated: %p, buffer: %p", self, _buffer);
-  _depthDataMap = nil;
-  _depthDataMapValid = NO;
-  _depthWidth = 0;
-  _depthHeight = 0;
 }
 
 - (CMSampleBufferRef)buffer {
-  NSLog(@"[Frame] buffer accessed: %p, buffer: %p, buffer retain count: %ld", self, _buffer, (long)CFGetRetainCount(_buffer));
   if (!self.isValid) {
     @throw [[NSException alloc] initWithName:@"capture/frame-invalid"
                                       reason:@"Trying to access an already closed Frame! "
@@ -164,10 +155,8 @@
 // Always return dimensions if they were ever set, even if frame is invalid or depth data is released
 - (NSDictionary *)depthDims {
   if (_depthWidth == 0 || _depthHeight == 0) {
-    NSLog(@"[Frame] depthDims has invalid dimensions: %zu x %zu", _depthWidth, _depthHeight);
     return nil;
   }
-  NSLog(@"[Frame] depthDims returning dimensions: %zu x %zu", _depthWidth, _depthHeight);
   return @{
     @"width": @(_depthWidth),
     @"height": @(_depthHeight)

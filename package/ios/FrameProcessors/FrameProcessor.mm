@@ -34,23 +34,11 @@ using namespace facebook;
   // Call the Frame Processor on the Worklet Runtime
   jsi::Runtime& runtime = _workletContext->getWorkletRuntime();
 
-  // Add debug collection trigger
-  // runtime.global().setProperty(runtime, "triggerGC", 
-  //   jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forUtf8(runtime, "triggerGC"), 0,
-  //   [](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* arguments, size_t count) -> jsi::Value {
-  //     NSLog(@"[FrameProcessor] Manually triggering JavaScript GC");
-  //     // Force a GC collection
-  //     runtime.instrumentation().collectGarbage("manual");
-  //     return jsi::Value::undefined();
-  //   }));
-
   // Use a jsi::Scope to indicate that all values allocated in a Frame Processor shall be picked up by GC if possible
   jsi::Scope scope(runtime);
 
   // Wrap HostObject as JSI Value
   auto argument = jsi::Object::createFromHostObject(runtime, frameHostObject);
-
-  NSLog(@"[JSI-FrameProcessor.mm] Passing FrameHostObject %p to JS", frameHostObject.get());
 
   jsi::Value jsValue(std::move(argument));
 
