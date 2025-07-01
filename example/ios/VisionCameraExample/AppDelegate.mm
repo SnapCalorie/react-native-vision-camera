@@ -23,8 +23,7 @@
 - (NSURL *)bundleURL
 {
 #if DEBUG
-  // Hardcoded Metro bundler URL for development. Replace with your dev machine's IP if needed.
-  return [NSURL URLWithString:@"http://192.168.30.93:8081/index.bundle?platform=ios&dev=true"];
+  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index" fallbackResource:nil];
 #else
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
 #endif

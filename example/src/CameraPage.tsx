@@ -195,30 +195,10 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
 
       runAtTargetFps(1, () => {
         'worklet'
-        console.log(`${frame.timestamp}: ${frame.width}x${frame.height} ${frame.pixelFormat} Frame (${frame.orientation})`)
-        examplePlugin(frame)
-        exampleKotlinSwiftPlugin(frame)
+        // examplePlugin(frame)
+        // exampleKotlinSwiftPlugin(frame)
 
-        try {
-          if (format !== undefined && format.supportsDepthCapture && device !== undefined && device.supportsDepthData) {
-            const depthArray = frame.depthToArrayBuffer()
-
-            if (depthArray !== undefined) {
-              console.log('Depth data bytes:', depthArray.byteLength)
-
-              // Using the length and width of the depth data, we can create a 2D array of floats
-              const depthData = new Float32Array(depthArray)
-
-              console.log(`Length in floats: ${depthData.length}`)
-            } else {
-              console.log('No depth data available')
-            }
-          } else {
-            console.log('No depth data available')
-          }
-        } finally {
-          console.log('Depth data processing finished')
-        }
+        console.log(`Frame Processor: ${frame.timestamp} - ${frame.width}x${frame.height} ${frame.pixelFormat} (${frame.orientation})`)
       })
     },
     [device, format],
