@@ -20,25 +20,26 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithBuffer:(CMSampleBufferRef)buffer
                    orientation:(UIImageOrientation)orientation
                     isMirrored:(BOOL)isMirrored
-                     depthData:(nullable AVDepthData*)depth;
+                    depthData:(nullable AVDepthData *)depthData NS_DESIGNATED_INITIALIZER;
 - (instancetype)init NS_UNAVAILABLE;
 
 - (void)incrementRefCount;
 - (void)decrementRefCount;
-- (BOOL)depthIsValid;
 
-@property(nonatomic, readonly) CMSampleBufferRef buffer;
-@property(nonatomic, readonly, nullable) AVDepthData* depth;
-@property(nonatomic, readonly) UIImageOrientation orientation;
-
-@property(nonatomic, readonly) NSString* pixelFormat;
-@property(nonatomic, readonly) BOOL isMirrored;
-@property(nonatomic, readonly) BOOL isValid;
-@property(nonatomic, readonly) size_t width;
-@property(nonatomic, readonly) size_t height;
-@property(nonatomic, readonly) double timestamp;
-@property(nonatomic, readonly) size_t bytesPerRow;
-@property(nonatomic, readonly) size_t planesCount;
+@property (nonatomic, readonly) CMSampleBufferRef buffer;
+@property (nonatomic, readonly) UIImageOrientation orientation;
+@property (nonatomic, readonly, copy) NSString *pixelFormat;
+@property (nonatomic, readonly) BOOL isMirrored;
+@property (nonatomic, readonly) BOOL isValid;
+@property (nonatomic, readonly) size_t width;
+@property (nonatomic, readonly) size_t height;
+@property (nonatomic, readonly) double timestamp;
+@property (nonatomic, readonly) size_t bytesPerRow;
+@property (nonatomic, readonly) size_t planesCount;
+@property (nonatomic, readonly) BOOL hasDepth;
+- (NSData * _Nullable)depthDataMap;
+- (void)invalidateDepthDataMap;
+- (NSDictionary * _Nullable)depthDims;
 
 @end
 
