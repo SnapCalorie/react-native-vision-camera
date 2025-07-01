@@ -17,7 +17,7 @@ import {
 } from 'react-native-vision-camera'
 import { Camera } from 'react-native-vision-camera'
 import { CONTENT_SPACING, CONTROL_BUTTON_SIZE, MAX_ZOOM_FACTOR, SAFE_AREA_PADDING, SCREEN_HEIGHT, SCREEN_WIDTH } from './Constants'
-import Reanimated, { Extrapolate, interpolate, useAnimatedGestureHandler, useAnimatedProps, useSharedValue } from 'react-native-reanimated'
+import Reanimated, { Extrapolate, interpolate, runOnJS, useAnimatedGestureHandler, useAnimatedProps, useSharedValue } from 'react-native-reanimated'
 import { useEffect } from 'react'
 import { useIsForeground } from './hooks/useIsForeground'
 import { StatusBarBlurBackground } from './views/StatusBarBlurBackground'
@@ -31,6 +31,7 @@ import { useIsFocused } from '@react-navigation/core'
 import { examplePlugin } from './frame-processors/ExamplePlugin'
 import { exampleKotlinSwiftPlugin } from './frame-processors/ExampleKotlinSwiftPlugin'
 import { usePreferredCameraDevice } from './hooks/usePreferredCameraDevice'
+import { useRunOnJS } from 'react-native-worklets-core'
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera)
 Reanimated.addWhitelistedNativeProps({
@@ -189,11 +190,13 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
     location.requestPermission()
   }, [location])
 
+  const runJs = useRunOnJS((newDepthDims: { width: number; height: number } | null) => {
+    setDepthDims(newDepthDims)
+  }, [])
+
   const frameProcessor = useFrameProcessor(
     (frame) => {
       'worklet'
-
-      // frame.render()
 
       runAtTargetFps(1, () => {
         'worklet'
@@ -201,6 +204,12 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
         // exampleKotlinSwiftPlugin(frame)
         console.log(`Frame has depth: ${frame.hasDepth}`)
         console.log(`Frame Processor: ${frame.timestamp} - ${frame.width}x${frame.height} ${frame.pixelFormat} (${frame.orientation})`)
+
+        if (frame.depthDims && frame.depthDims.width && frame.depthDims.height) {
+          runJs({ width: frame.depthDims.width, height: frame.depthDims.height })
+        } else {
+          runJs(null)
+        }
       })
     },
     [device, format],
@@ -214,6 +223,9 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
     !!(device?.supportsDepthData && format?.supportsDepthCapture)
   )
   const isDepthEnabled = depthEnabled && !!(device?.supportsDepthData && format?.supportsDepthCapture)
+
+  // Track latest depth frame dimensions
+  const [depthDims, setDepthDims] = useState<{ width: number; height: number } | null>(null)
 
   return (
     <View style={styles.container}>
@@ -319,7 +331,13 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
       </View>
 
       <View style={[styles.depthIndicator, { backgroundColor: isDepthEnabled ? '#1ec773' : '#444' }]}>
-        <Text style={styles.depthIndicatorText}>{`Depth: ${isDepthEnabled ? 'ON' : 'OFF'}`}</Text>
+        <Text style={styles.depthIndicatorText}>
+          {isDepthEnabled
+            ? depthDims !== null
+              ? `Depth: ON (${depthDims.width}x${depthDims.height})`
+              : 'Depth: ON'
+            : 'Depth: OFF'}
+        </Text>
       </View>
     </View>
   )
