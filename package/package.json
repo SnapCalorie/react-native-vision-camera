@@ -1,6 +1,6 @@
 {
   "name": "react-native-vision-camera",
-  "version": "4.7.0-depth.3",
+  "version": "4.7.0-depth.4",
   "description": "A powerful, high-performance React Native Camera library.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
@@ -32,7 +32,7 @@
     "lint": "eslint \"**/*.{js,ts,tsx}\" --fix",
     "lint-ci": "eslint \"**/*.{js,ts,tsx}\" -f @jamesacarr/github-actions",
     "start": "cd example && bun start",
-    "build": "bob build",
+    "build": "npx bob build",
     "release": "bob build && release-it",
     "pods": "cd example && bun pods",
     "bootstrap": "bun && cd example && bun && bun pods",
@@ -158,6 +158,7 @@
     ]
   },
   "devDependencies": {
-    "@expo/config-plugins": "^10.0.3"
+    "@expo/config-plugins": "^10.0.3",
+    "react-native-builder-bob": "^0.40.12"
   }
 }
