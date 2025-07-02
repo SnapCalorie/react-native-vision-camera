@@ -98,10 +98,15 @@ final class CameraSession:
   func createPreviewView(frame: CGRect) -> PreviewView {
     let enableMeshWireframe = configuration?.enableMeshWireframe ?? false
     #if canImport(ARKit)
-    if enableMeshWireframe, #available(iOS 13.0, *) {
-      // Show ARKit mesh wireframe view instead of AVCaptureVideoPreviewLayer
-      // This assumes you have an ARKit-based PreviewView initializer
-      return PreviewView(frame: frame, enableMeshWireframe: true)
+    if enableMeshWireframe, #available(iOS 13.0, *), let arSession = self.arSession {
+      // Create ARKit-based preview view and assign our existing ARSession
+      let previewView = PreviewView(frame: frame, enableMeshWireframe: true)
+      if let arView = previewView.arView as? PreviewView.VisionArView {
+        // Set the ARKit session from CameraSession
+        arView.session = arSession
+        arView.initializeSessionAndProps()
+      }
+      return previewView
     }
     #endif
     // Fallback to normal preview

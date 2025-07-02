@@ -67,6 +67,9 @@ private var arSessionKey: UInt8 = 0
 @available(iOS 13.0, *)
 extension CameraSession: ARSessionDelegate {
   func session(_ session: ARSession, didUpdate frame: ARFrame) {
+    // Add debug log to verify frame updates are occurring
+    VisionLogger.log(level: .debug, message: "ARKit frame update received at timestamp: \(frame.timestamp)")
+
     // Handle ARKit frames
     // Pass frame data to delegates similar to how AVFoundation frames are handled
 
@@ -170,7 +173,7 @@ extension CameraSession: ARSessionDelegate {
         // Convert to disparity format if needed for consistency with AVFoundation depth
         if depthData?.depthDataType != kCVPixelFormatType_DisparityFloat32,
            depthData?.availableDepthDataTypes.contains(kCVPixelFormatType_DisparityFloat32) == true {
-          depthData = try depthData?.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32)
+          depthData = depthData?.converting(toDepthDataType: kCVPixelFormatType_DisparityFloat32)
         }
       } catch {
         print("Failed to create depth data: \(error.localizedDescription)")
