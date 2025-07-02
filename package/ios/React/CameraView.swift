@@ -29,7 +29,11 @@ public final class CameraView: UIView, CameraSessionDelegate, PreviewViewDelegat
   @objc var enablePortraitEffectsMatteDelivery = false
   @objc var enableBufferCompression = false
   @objc var isMirrored = false
-  @objc var enableMeshWireframe = false
+  @objc var enableMeshWireframe = false {
+    didSet {
+      updatePreview()
+    }
+  }
 
   // use cases
   @objc var photo = false

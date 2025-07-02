@@ -112,17 +112,18 @@ final class PreviewView: UIView {
   // Standard preview initializer
   init(frame: CGRect, session: AVCaptureSession, enableMeshWireframe: Bool = false) {
     super.init(frame: frame)
+    VisionLogger.log(level: .info, message: "PreviewView init: enableMeshWireframe=\(enableMeshWireframe)")
     if enableMeshWireframe, #available(iOS 13.0, *) {
       #if canImport(ARKit)
+      VisionLogger.log(level: .info, message: "Creating ARKit VisionArView for mesh wireframe preview")
       // Use VisionArView for AR mesh wireframe preview
       let arView = VisionArView(frame: frame)
       arView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
       arView.showWireframe = true
-      // Don't initialize the session here - we'll use the existing one
       self.arView = arView
       addSubview(arView)
-      // Notify delegate that preview started
-      self.delegate?.onPreviewStarted()
+      // Properly initialize ARKit view and trigger delegate event
+      arView.initializeSessionAndProps()
       #endif
     } else {
       videoPreviewLayer.session = session
