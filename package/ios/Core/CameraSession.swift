@@ -142,6 +142,13 @@ final class CameraSession:
         if difference.isSessionConfigurationDirty {
           self.captureSession.beginConfiguration()
 
+          // This is a hack for the iOS bug related to black screen on the camera view
+          if #available(iOS 16.0, *) {
+            if self.captureSession.isMultitaskingCameraAccessSupported {
+              self.captureSession.isMultitaskingCameraAccessEnabled = true
+            }
+          }
+          
           // 1. Update input device
           if difference.inputChanged {
             try self.configureDevice(configuration: config)
