@@ -96,7 +96,11 @@ extension CameraSession {
       photoOutput.capturePhoto(with: photoSettings, delegate: photoCaptureDelegate)
 
       // Assume that `takePhoto` is always called with the same parameters, so prepare the next call too.
-      photoOutput.setPreparedPhotoSettingsArray([photoSettings], completionHandler: nil)
+      // --NOTE--
+      // Attempted Fix for iOS Max devices: Removed setPreparedPhotoSettingsArray call that causes
+      //  error -12780 (kCMSampleBufferError_RequiredParameterMissing) on certain devices
+      //  Reference: https://github.com/mrousavy/react-native-vision-camera/issues/1986
+      // photoOutput.setPreparedPhotoSettingsArray([photoSettings], completionHandler: nil)
     }
   }
 }
